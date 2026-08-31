@@ -28,6 +28,60 @@ replace_once(
     "#include <memory>\n#include <unordered_map>\n#include <vector>\n",
 )
 
+# Vulkan-Hpp exception-mode API and utility header fixes.
+p = "src/video_core/renderer_vulkan/vk_framegen.cpp"
+text = read(p)
+if "#include <limits>" not in text:
+    text = text.replace("#include <fstream>\n", "#include <fstream>\n#include <limits>\n", 1)
+text = text.replace(
+'''    const auto image_result = device.createImage(image_info);
+    if (image_result.result != vk::Result::eSuccess) {
+        LOG_ERROR(Render_Vulkan, "FrameGen: createImage(AHB) failed: {}", vk::to_string(image_result.result));
+        AHardwareBuffer_release(out.ahb);
+        out.ahb = nullptr;
+        return false;
+    }
+    out.image = image_result.value;
+''',
+'''    try {
+        out.image = device.createImage(image_info);
+    } catch (const std::exception& e) {
+        LOG_ERROR(Render_Vulkan, "FrameGen: createImage(AHB) failed: {}", e.what());
+        AHardwareBuffer_release(out.ahb);
+        out.ahb = nullptr;
+        return false;
+    }
+''')
+text = text.replace(
+'''    const auto memory_result = device.allocateMemory(allocation_info);
+    if (memory_result.result != vk::Result::eSuccess) {
+        LOG_ERROR(Render_Vulkan, "FrameGen: allocateMemory(AHB) failed: {}",
+                  vk::to_string(memory_result.result));
+        DestroySharedImage(out);
+        return false;
+    }
+    out.memory = memory_result.value;
+    if (device.bindImageMemory(out.image, out.memory, 0) != vk::Result::eSuccess) {
+        LOG_ERROR(Render_Vulkan, "FrameGen: bindImageMemory(AHB) failed");
+        DestroySharedImage(out);
+        return false;
+    }
+''',
+'''    try {
+        out.memory = device.allocateMemory(allocation_info);
+        device.bindImageMemory(out.image, out.memory, 0);
+    } catch (const std::exception& e) {
+        LOG_ERROR(Render_Vulkan, "FrameGen: AHB memory import/bind failed: {}", e.what());
+        DestroySharedImage(out);
+        return false;
+    }
+''')
+text = text.replace(
+    "    device.freeCommandBuffers(command_pool, cmdbuf);\n",
+    "    const std::array to_free{cmdbuf};\n    device.freeCommandBuffers(command_pool, to_free);\n",
+)
+write(p, text)
+
 # Enable the Android Hardware Buffer external-memory extension on Azahar's own device.
 p = "src/video_core/renderer_vulkan/vk_instance.cpp"
 text = read(p)
@@ -308,9 +362,6 @@ void PresentWindow::PresentImage(Frame* frame, vk::Image source_image, bool gene
     }
     swapchain.Present();
 
-    // The current Azahar presenter owns one command buffer per real frame. Generated frames are
-    // therefore drained before re-recording that command buffer. This is deliberately conservative
-    // and can later be replaced by a small command-buffer/fence ring without changing LSFG itself.
     if (generated) {
         graphics_queue.waitIdle();
         cmdbuf.reset();
