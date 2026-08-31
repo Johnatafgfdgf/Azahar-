@@ -26,3 +26,5 @@ jobs:
           git remote add upstream https://github.com/AzaharPlus/AzaharPlus.git
           git fetch upstream "$UPSTREAM_SHA"
           git push origin "$UPSTREAM_SHA":refs/heads/main --force
+
+# bootstrap trigger
