@@ -171,6 +171,15 @@ replace_once(
     ui_block + '            add(HeaderSetting(R.string.stereoscopy))\n',
 )
 
+# Fix older generated copies before checking whether the block already exists.
+strings_path = ROOT / "src/android/app/src/main/res/values/strings.xml"
+strings_text = strings_path.read_text(encoding="utf-8")
+strings_text = strings_text.replace(
+    "Automatically scale motion estimation to the game's rendered resolution.",
+    "Automatically scale motion estimation to the rendered game resolution.",
+)
+strings_path.write_text(strings_text, encoding="utf-8")
+
 insert_before_close(
     "src/android/app/src/main/res/values/strings.xml",
     '''    <!-- Integrated Vulkan frame generation -->
@@ -183,7 +192,7 @@ insert_before_close(
     <string name="frame_gen_queue_target">Frame queue target</string>
     <string name="frame_gen_queue_target_description">Lower buffering reduces latency; extra buffering can improve pacing on unstable devices.</string>
     <string name="frame_gen_flow_scale_auto">Match motion estimation to the game</string>
-    <string name="frame_gen_flow_scale_auto_description">Automatically scale motion estimation to the game's rendered resolution.</string>
+    <string name="frame_gen_flow_scale_auto_description">Automatically scale motion estimation to the rendered game resolution.</string>
     <string name="frame_gen_flow_scale">Motion estimation scale</string>
     <string name="frame_gen_flow_scale_description">Manual optical-flow resolution. Lower values reduce GPU cost but may increase artifacts.</string>
     <string name="frame_gen_fp16">Half precision shaders</string>
