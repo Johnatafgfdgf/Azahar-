@@ -33,6 +33,24 @@ jobs:
             https://github.com/FrankBarretta/lsfg-vk-android.git \
             externals/lsfg-vk-android
 
+      - name: Sanitize framegen Android resources
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('src/android/app/src/main/res/values/strings.xml')
+          s = p.read_text(encoding='utf-8')
+          s, n = re.subn(
+              r'<string name="frame_gen_flow_scale_auto_description">.*?</string>',
+              '<string name="frame_gen_flow_scale_auto_description">Automatic motion scaling based on game resolution.</string>',
+              s,
+              count=1,
+          )
+          if n != 1:
+              raise SystemExit('frame_gen_flow_scale_auto_description not found exactly once')
+          p.write_text(s, encoding='utf-8')
+          PY
+
       - name: Set up Java 17
         uses: actions/setup-java@v5
         with:
@@ -71,5 +89,3 @@ jobs:
           name: AzaharPlus-FrameGen-debug
           path: artifacts/
           if-no-files-found: error
-
-# build trigger: Android resource fix applied
