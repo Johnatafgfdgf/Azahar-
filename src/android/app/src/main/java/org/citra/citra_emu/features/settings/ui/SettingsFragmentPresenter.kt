@@ -1018,6 +1018,80 @@ class SettingsFragmentPresenter(private val fragmentView: SettingsFragmentView) 
                 )
             )
 
+            add(HeaderSetting(R.string.frame_gen))
+            add(
+                SwitchSetting(
+                    BooleanSetting.FRAME_GEN,
+                    R.string.frame_gen,
+                    R.string.frame_gen_description,
+                    BooleanSetting.FRAME_GEN.key,
+                    BooleanSetting.FRAME_GEN.defaultValue
+                )
+            )
+            add(
+                SingleChoiceSetting(
+                    IntSetting.FRAME_GEN_TARGET_RATE,
+                    R.string.frame_gen_target_rate,
+                    R.string.frame_gen_target_rate_description,
+                    R.array.frameGenTargetRateNames,
+                    R.array.frameGenTargetRateValues,
+                    IntSetting.FRAME_GEN_TARGET_RATE.key,
+                    IntSetting.FRAME_GEN_TARGET_RATE.defaultValue
+                )
+            )
+            add(
+                SingleChoiceSetting(
+                    IntSetting.FRAME_GEN_MULTIPLIER,
+                    R.string.frame_gen_multiplier,
+                    R.string.frame_gen_multiplier_description,
+                    R.array.frameGenMultiplierNames,
+                    R.array.frameGenMultiplierValues,
+                    IntSetting.FRAME_GEN_MULTIPLIER.key,
+                    IntSetting.FRAME_GEN_MULTIPLIER.defaultValue
+                )
+            )
+            add(
+                SingleChoiceSetting(
+                    IntSetting.FRAME_GEN_QUEUE_TARGET,
+                    R.string.frame_gen_queue_target,
+                    R.string.frame_gen_queue_target_description,
+                    R.array.frameGenQueueTargetNames,
+                    R.array.frameGenQueueTargetValues,
+                    IntSetting.FRAME_GEN_QUEUE_TARGET.key,
+                    IntSetting.FRAME_GEN_QUEUE_TARGET.defaultValue
+                )
+            )
+            add(
+                SwitchSetting(
+                    BooleanSetting.FRAME_GEN_FLOW_SCALE_AUTO,
+                    R.string.frame_gen_flow_scale_auto,
+                    R.string.frame_gen_flow_scale_auto_description,
+                    BooleanSetting.FRAME_GEN_FLOW_SCALE_AUTO.key,
+                    BooleanSetting.FRAME_GEN_FLOW_SCALE_AUTO.defaultValue
+                )
+            )
+            add(
+                SliderSetting(
+                    IntSetting.FRAME_GEN_FLOW_SCALE,
+                    R.string.frame_gen_flow_scale,
+                    R.string.frame_gen_flow_scale_description,
+                    25,
+                    100,
+                    "%",
+                    IntSetting.FRAME_GEN_FLOW_SCALE.key,
+                    IntSetting.FRAME_GEN_FLOW_SCALE.defaultValue.toFloat()
+                )
+            )
+            add(
+                SwitchSetting(
+                    BooleanSetting.FRAME_GEN_FP16,
+                    R.string.frame_gen_fp16,
+                    R.string.frame_gen_fp16_description,
+                    BooleanSetting.FRAME_GEN_FP16.key,
+                    BooleanSetting.FRAME_GEN_FP16.defaultValue
+                )
+            )
+
             add(HeaderSetting(R.string.stereoscopy))
             add(
                 SingleChoiceSetting(
