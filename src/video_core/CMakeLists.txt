@@ -168,6 +168,8 @@ if (ENABLE_VULKAN)
         renderer_vulkan/vk_descriptor_update_queue.h
         renderer_vulkan/vk_graphics_pipeline.cpp
         renderer_vulkan/vk_graphics_pipeline.h
+        renderer_vulkan/vk_framegen.cpp
+        renderer_vulkan/vk_framegen.h
         renderer_vulkan/vk_master_semaphore.cpp
         renderer_vulkan/vk_master_semaphore.h
         renderer_vulkan/vk_memory_util.cpp
@@ -201,6 +203,9 @@ if (ENABLE_VULKAN)
         shader/generator/spv_fs_shader_gen.h
     )
     target_link_libraries(video_core PRIVATE vulkan-headers vma sirit SPIRV glslang)
+    if(ANDROID AND TARGET lsfg-vk-framegen)
+        target_link_libraries(video_core PRIVATE lsfg-vk-framegen android)
+    endif()
 endif()
 
 if(ENABLE_SDL2)

@@ -21,6 +21,7 @@ class Instance;
 class Swapchain;
 class Scheduler;
 class RenderManager;
+class FrameGenerator;
 
 struct Frame {
     u32 width;
@@ -68,6 +69,9 @@ private:
 
     void CopyToSwapchain(Frame* frame);
 
+    void PresentImage(Frame* frame, vk::Image source_image, bool generated,
+                      size_t generated_index, bool final_real);
+
     vk::RenderPass CreateRenderpass();
 
 private:
@@ -92,6 +96,7 @@ private:
     std::mutex queue_mutex;
     std::mutex free_mutex;
     std::jthread present_thread;
+    std::unique_ptr<FrameGenerator> frame_generator;
     bool vsync_enabled{};
     bool blit_supported;
     bool use_present_thread{true};

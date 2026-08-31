@@ -494,3 +494,11 @@ if (ENABLE_VULKAN)
         add_subdirectory(libadrenotools)
     endif()
 endif()
+
+
+# Integrated LSFG frame-generation backend (Android only).
+if(ANDROID AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lsfg-vk-android/framegen/CMakeLists.txt")
+    set(VOLK_INSTALL OFF CACHE BOOL "" FORCE)
+    add_subdirectory(lsfg-vk-android/thirdparty/volk EXCLUDE_FROM_ALL)
+    add_subdirectory(lsfg-vk-android/framegen EXCLUDE_FROM_ALL)
+endif()

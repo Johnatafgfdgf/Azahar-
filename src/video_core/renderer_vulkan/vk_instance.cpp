@@ -422,7 +422,7 @@ bool Instance::CreateDevice() {
         return false;
     }
 
-    boost::container::static_vector<const char*, 13> enabled_extensions;
+    boost::container::static_vector<const char*, 20> enabled_extensions;
     const auto add_extension = [&](std::string_view extension, bool blacklist = false,
                                    std::string_view reason = "") -> bool {
         const auto result =
@@ -450,6 +450,17 @@ bool Instance::CreateDevice() {
     const bool is_turnip = driver_id == vk::DriverIdKHR::eMesaTurnip;
 
     add_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+#ifdef __ANDROID__
+    // Frame generation shares the final composed image with its compute device through
+    // AHardwareBuffer. These are device extensions only; the normal renderer remains
+    // unchanged when frame generation is disabled.
+    add_extension(VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME);
+    add_extension(VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME);
+    add_extension(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
+    add_extension(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
+    add_extension(VK_KHR_BIND_MEMORY_2_EXTENSION_NAME);
+    add_extension(VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME);
+#endif
     image_format_list = add_extension(VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME);
     shader_stencil_export = add_extension(VK_EXT_SHADER_STENCIL_EXPORT_EXTENSION_NAME);
     external_memory_host = add_extension(VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME);

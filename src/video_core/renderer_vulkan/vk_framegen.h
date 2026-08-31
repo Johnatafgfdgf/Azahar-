@@ -6,6 +6,7 @@
 
 #include <chrono>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include "video_core/renderer_vulkan/vk_common.h"

@@ -175,7 +175,7 @@ insert_before_close(
     "src/android/app/src/main/res/values/strings.xml",
     '''    <!-- Integrated Vulkan frame generation -->
     <string name="frame_gen">Frame generation</string>
-    <string name="frame_gen_description">Generate intermediate frames inside Azahar's Vulkan renderer after the final 3DS screen composition. Vulkan only.</string>
+    <string name="frame_gen_description">Generate intermediate frames inside the Azahar Vulkan renderer after the final 3DS screen composition. Vulkan only.</string>
     <string name="frame_gen_target_rate">Target frame rate</string>
     <string name="frame_gen_target_rate_description">Automatically choose how many intermediate frames to generate for the selected display target. Choose Disabled to use the fixed multiplier.</string>
     <string name="frame_gen_multiplier">Frame multiplier</string>

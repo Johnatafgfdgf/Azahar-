@@ -6,6 +6,7 @@
 #include "common/settings.h"
 #include "common/thread.h"
 #include "core/frontend/emu_window.h"
+#include "video_core/renderer_vulkan/vk_framegen.h"
 #include "video_core/renderer_vulkan/vk_instance.h"
 #include "video_core/renderer_vulkan/vk_platform.h"
 #include "video_core/renderer_vulkan/vk_present_window.h"
@@ -146,6 +147,10 @@ PresentWindow::PresentWindow(Frontend::EmuWindow& emu_window_, const Instance& i
                           i);
         }
     }
+
+#ifdef __ANDROID__
+    frame_generator = std::make_unique<FrameGenerator>(instance);
+#endif
 
     if (use_present_thread) {
         present_thread = std::jthread([this](std::stop_token token) { PresentThread(token); });
@@ -346,6 +351,24 @@ void PresentWindow::NotifySurfaceChanged() {
 }
 
 void PresentWindow::CopyToSwapchain(Frame* frame) {
+    size_t generated_count = 0;
+#ifdef __ANDROID__
+    if (frame_generator && Settings::values.frame_gen.GetValue()) {
+        generated_count = frame_generator->Process(frame->image, frame->width, frame->height,
+                                                   swapchain.GetSurfaceFormat().format);
+    }
+#endif
+
+    // LSFG outputs represent the temporal positions between the previous real frame and this
+    // one, so display them first and then the actual game frame.
+    for (size_t i = 0; i < generated_count; ++i) {
+        PresentImage(frame, frame_generator->GeneratedImage(i), true, i, false);
+    }
+    PresentImage(frame, frame->image, false, 0, true);
+}
+
+void PresentWindow::PresentImage(Frame* frame, vk::Image source_image, bool generated,
+                                 size_t generated_index, bool final_real) {
     const auto recreate_swapchain = [&] {
 #ifdef ANDROID
         {
@@ -375,39 +398,48 @@ void PresentWindow::CopyToSwapchain(Frame* frame) {
     }
 
     const vk::Image swapchain_image = swapchain.Image();
-
     const vk::CommandBufferBeginInfo begin_info = {
         .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
     };
     const vk::CommandBuffer cmdbuf = frame->cmdbuf;
     cmdbuf.begin(begin_info);
 
+#ifdef __ANDROID__
+    if (generated && frame_generator) {
+        frame_generator->RecordAcquireGenerated(cmdbuf, generated_index);
+    }
+#endif
+
     const vk::Extent2D extent = swapchain.GetExtent();
-    const std::array pre_barriers{
-        vk::ImageMemoryBarrier{
-            .srcAccessMask = vk::AccessFlagBits::eNone,
-            .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
-            .oldLayout = vk::ImageLayout::eUndefined,
-            .newLayout = vk::ImageLayout::eTransferDstOptimal,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = swapchain_image,
-            .subresourceRange{
-                .aspectMask = vk::ImageAspectFlagBits::eColor,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = VK_REMAINING_ARRAY_LAYERS,
-            },
+    const vk::ImageMemoryBarrier swapchain_barrier{
+        .srcAccessMask = vk::AccessFlagBits::eNone,
+        .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
+        .oldLayout = vk::ImageLayout::eUndefined,
+        .newLayout = vk::ImageLayout::eTransferDstOptimal,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = swapchain_image,
+        .subresourceRange{
+            .aspectMask = vk::ImageAspectFlagBits::eColor,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = VK_REMAINING_ARRAY_LAYERS,
         },
-        vk::ImageMemoryBarrier{
+    };
+    cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
+                           vk::PipelineStageFlagBits::eTransfer,
+                           vk::DependencyFlagBits::eByRegion, {}, {}, swapchain_barrier);
+
+    if (!generated) {
+        const vk::ImageMemoryBarrier real_frame_barrier{
             .srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
             .dstAccessMask = vk::AccessFlagBits::eTransferRead,
             .oldLayout = vk::ImageLayout::eTransferSrcOptimal,
             .newLayout = vk::ImageLayout::eTransferSrcOptimal,
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = frame->image,
+            .image = source_image,
             .subresourceRange{
                 .aspectMask = vk::ImageAspectFlagBits::eColor,
                 .baseMipLevel = 0,
@@ -415,8 +447,29 @@ void PresentWindow::CopyToSwapchain(Frame* frame) {
                 .baseArrayLayer = 0,
                 .layerCount = VK_REMAINING_ARRAY_LAYERS,
             },
-        },
-    };
+        };
+        cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                               vk::PipelineStageFlagBits::eTransfer,
+                               vk::DependencyFlagBits::eByRegion, {}, {}, real_frame_barrier);
+    }
+
+    if (blit_supported || generated) {
+        cmdbuf.blitImage(source_image, vk::ImageLayout::eTransferSrcOptimal, swapchain_image,
+                         vk::ImageLayout::eTransferDstOptimal,
+                         MakeImageBlit(frame->width, frame->height, extent.width, extent.height),
+                         vk::Filter::eLinear);
+    } else {
+        cmdbuf.copyImage(source_image, vk::ImageLayout::eTransferSrcOptimal, swapchain_image,
+                         vk::ImageLayout::eTransferDstOptimal,
+                         MakeImageCopy(frame->width, frame->height, extent.width, extent.height));
+    }
+
+#ifdef __ANDROID__
+    if (generated && frame_generator) {
+        frame_generator->RecordReleaseGenerated(cmdbuf, generated_index);
+    }
+#endif
+
     const vk::ImageMemoryBarrier post_barrier{
         .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
         .dstAccessMask = vk::AccessFlagBits::eMemoryRead,
@@ -433,57 +486,47 @@ void PresentWindow::CopyToSwapchain(Frame* frame) {
             .layerCount = VK_REMAINING_ARRAY_LAYERS,
         },
     };
-
-    cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
-                           vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlagBits::eByRegion,
-                           {}, {}, pre_barriers);
-
-    if (blit_supported) {
-        cmdbuf.blitImage(frame->image, vk::ImageLayout::eTransferSrcOptimal, swapchain_image,
-                         vk::ImageLayout::eTransferDstOptimal,
-                         MakeImageBlit(frame->width, frame->height, extent.width, extent.height),
-                         vk::Filter::eLinear);
-    } else {
-        cmdbuf.copyImage(frame->image, vk::ImageLayout::eTransferSrcOptimal, swapchain_image,
-                         vk::ImageLayout::eTransferDstOptimal,
-                         MakeImageCopy(frame->width, frame->height, extent.width, extent.height));
-    }
-
-    cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
-                           vk::PipelineStageFlagBits::eAllCommands,
+    cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+                           vk::PipelineStageFlagBits::eBottomOfPipe,
                            vk::DependencyFlagBits::eByRegion, {}, {}, post_barrier);
-
     cmdbuf.end();
 
-    static constexpr std::array<vk::PipelineStageFlags, 2> wait_stage_masks = {
-        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+    static constexpr vk::PipelineStageFlags acquire_stage = vk::PipelineStageFlagBits::eTransfer;
+    static constexpr std::array<vk::PipelineStageFlags, 2> real_wait_stages = {
+        vk::PipelineStageFlagBits::eTransfer,
         vk::PipelineStageFlagBits::eAllGraphics,
     };
 
     const vk::Semaphore present_ready = swapchain.GetPresentReadySemaphore();
     const vk::Semaphore image_acquired = swapchain.GetImageAcquiredSemaphore();
-    const std::array wait_semaphores = {image_acquired, frame->render_ready};
+    const std::array real_waits = {image_acquired, frame->render_ready};
 
-    vk::SubmitInfo submit_info = {
-        .waitSemaphoreCount = static_cast<u32>(wait_semaphores.size()),
-        .pWaitSemaphores = wait_semaphores.data(),
-        .pWaitDstStageMask = wait_stage_masks.data(),
+    vk::SubmitInfo submit_info{
+        .waitSemaphoreCount = generated ? 1u : 2u,
+        .pWaitSemaphores = generated ? &image_acquired : real_waits.data(),
+        .pWaitDstStageMask = generated ? &acquire_stage : real_wait_stages.data(),
         .commandBufferCount = 1u,
         .pCommandBuffers = &cmdbuf,
-        .signalSemaphoreCount = 1,
+        .signalSemaphoreCount = 1u,
         .pSignalSemaphores = &present_ready,
     };
 
     std::scoped_lock submit_lock{scheduler.submit_mutex, recreate_surface_mutex};
-
     try {
-        graphics_queue.submit(submit_info, frame->present_done);
+        graphics_queue.submit(submit_info, final_real ? frame->present_done : vk::Fence{});
     } catch (vk::DeviceLostError& err) {
-        LOG_CRITICAL(Render_Vulkan, "Device lost during present submit: {}", err.what());
+        LOG_CRITICAL(Render_Vulkan, "Device lost during framegen present submit: {}", err.what());
         UNREACHABLE();
     }
-
     swapchain.Present();
+
+    // The current Azahar presenter owns one command buffer per real frame. Generated frames are
+    // therefore drained before re-recording that command buffer. This is deliberately conservative
+    // and can later be replaced by a small command-buffer/fence ring without changing LSFG itself.
+    if (generated) {
+        graphics_queue.waitIdle();
+        cmdbuf.reset();
+    }
 }
 
 vk::RenderPass PresentWindow::CreateRenderpass() {
