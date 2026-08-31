@@ -26,6 +26,13 @@ jobs:
           ref: framegen
           submodules: recursive
 
+      - name: Fetch integrated LSFG backend
+        run: |
+          rm -rf externals/lsfg-vk-android
+          git clone --depth 1 --branch release --recurse-submodules \
+            https://github.com/FrankBarretta/lsfg-vk-android.git \
+            externals/lsfg-vk-android
+
       - name: Set up Java 17
         uses: actions/setup-java@v5
         with:
