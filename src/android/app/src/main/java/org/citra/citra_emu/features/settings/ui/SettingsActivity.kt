@@ -13,6 +13,7 @@ import android.view.ViewGroup.MarginLayoutParams
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -25,6 +26,8 @@ import org.citra.citra_emu.CitraApplication
 import org.citra.citra_emu.NativeLibrary
 import org.citra.citra_emu.R
 import org.citra.citra_emu.databinding.ActivitySettingsBinding
+import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 import org.citra.citra_emu.features.settings.model.BooleanSetting
 import org.citra.citra_emu.features.settings.model.FloatSetting
@@ -41,6 +44,30 @@ import org.citra.citra_emu.utils.ThemeUtil
 
 class SettingsActivity : AppCompatActivity(), SettingsActivityView {
     private val presenter = SettingsActivityPresenter(this)
+
+    private val losslessDllPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        try {
+            val dir = File(filesDir, "framegen")
+            if (!dir.exists() && !dir.mkdirs()) {
+                throw IOException("Could not create frame generation directory")
+            }
+            val destination = File(dir, "Lossless.dll")
+            contentResolver.openInputStream(uri).use { input ->
+                if (input == null) throw IOException("Could not open selected file")
+                FileOutputStream(destination, false).use { output -> input.copyTo(output) }
+            }
+            if (destination.length() < 1024L) {
+                destination.delete()
+                throw IOException("Selected file is too small to be Lossless.dll")
+            }
+            NativeLibrary.setFrameGenDllPath(destination.absolutePath)
+            showToastMessage(getString(R.string.frame_gen_dll_imported), false)
+            settingsFragment?.loadSettingsList()
+        } catch (e: Exception) {
+            showToastMessage(getString(R.string.frame_gen_dll_import_failed, e.message ?: "unknown error"), true)
+        }
+    }
 
     private lateinit var binding: ActivitySettingsBinding
 
@@ -241,6 +268,19 @@ class SettingsActivity : AppCompatActivity(), SettingsActivityView {
 
         showToastMessage(getString(R.string.settings_reset), true)
         finish()
+    }
+
+    fun pickLosslessDll() {
+        losslessDllPicker.launch(arrayOf("application/octet-stream", "application/x-msdownload", "*/*"))
+    }
+
+    fun losslessDllStatus(): String {
+        val file = File(filesDir, "framegen/Lossless.dll")
+        return if (file.isFile && file.length() > 1024L) {
+            getString(R.string.frame_gen_dll_installed)
+        } else {
+            getString(R.string.frame_gen_dll_not_installed)
+        }
     }
 
     fun setToolbarTitle(title: String) {

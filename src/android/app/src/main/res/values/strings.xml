@@ -937,4 +937,10 @@
     <string name="frame_gen_fp16">Half precision shaders</string>
     <string name="frame_gen_fp16_description">Prefer FP16 frame-generation shaders when the GPU and imported Lossless Scaling shaders support them.</string>
 
+    <string name="frame_gen_dll">Lossless Scaling library</string>
+    <string name="frame_gen_dll_description">Select your own Lossless.dll. Azahar reads only the LSFG shader resources and stores the selected file in private app storage.</string>
+    <string name="frame_gen_dll_installed">Installed</string>
+    <string name="frame_gen_dll_not_installed">Not installed</string>
+    <string name="frame_gen_dll_imported">Lossless.dll imported successfully</string>
+    <string name="frame_gen_dll_import_failed">Could not import Lossless.dll: %1$s</string>
 </resources>

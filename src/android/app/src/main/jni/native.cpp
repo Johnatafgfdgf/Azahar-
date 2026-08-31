@@ -331,6 +331,17 @@ void InitializeGpuDriver(const std::string& hook_lib_dir, const std::string& cus
 
 extern "C" {
 
+void Java_org_citra_citra_1emu_NativeLibrary_setFrameGenDllPath(JNIEnv* env,
+                                                               [[maybe_unused]] jobject obj,
+                                                               jstring jpath) {
+    const std::string path = GetJString(env, jpath);
+    if (path.empty()) {
+        unsetenv("AZAHAR_LOSSLESS_DLL");
+    } else {
+        setenv("AZAHAR_LOSSLESS_DLL", path.c_str(), 1);
+    }
+}
+
 void Java_org_citra_citra_1emu_NativeLibrary_surfaceChanged(JNIEnv* env,
                                                             [[maybe_unused]] jobject obj,
                                                             jobject surf) {

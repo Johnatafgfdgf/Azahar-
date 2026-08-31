@@ -10,6 +10,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
+import java.io.File
 import org.citra.citra_emu.utils.DirectoryInitialization
 import org.citra.citra_emu.utils.DocumentsTree
 import org.citra.citra_emu.utils.GpuDriverHelper
@@ -54,6 +55,9 @@ class CitraApplication : Application() {
         if (PermissionsHandler.hasWriteAccess(applicationContext)) {
             DirectoryInitialization.start()
         }
+
+        val frameGenDll = File(filesDir, "framegen/Lossless.dll")
+        NativeLibrary.setFrameGenDllPath(frameGenDll.absolutePath)
 
         NativeLibrary.logDeviceInfo()
         logDeviceInfo()

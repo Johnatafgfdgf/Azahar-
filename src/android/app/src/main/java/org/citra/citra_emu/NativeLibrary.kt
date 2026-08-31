@@ -118,6 +118,9 @@ object NativeLibrary {
 
     external fun reloadSettings()
 
+    /** Path to the user's own Lossless Scaling DLL used only for shader resources. */
+    external fun setFrameGenDllPath(path: String)
+
     external fun getTitleId(filename: String): Long
 
     external fun getIsSystemTitle(path: String): Boolean

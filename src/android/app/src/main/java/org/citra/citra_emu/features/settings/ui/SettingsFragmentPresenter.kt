@@ -937,6 +937,15 @@ class SettingsFragmentPresenter(private val fragmentView: SettingsFragmentView) 
 
             add(HeaderSetting(R.string.frame_gen))
             add(
+                RunnableSetting(
+                    R.string.frame_gen_dll,
+                    R.string.frame_gen_dll_description,
+                    false,
+                    runnable = { settingsActivity.pickLosslessDll() },
+                    value = { settingsActivity.losslessDllStatus() }
+                )
+            )
+            add(
                 SwitchSetting(
                     BooleanSetting.FRAME_GEN,
                     R.string.frame_gen,
