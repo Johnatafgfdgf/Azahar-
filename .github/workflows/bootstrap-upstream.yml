@@ -1,0 +1,28 @@
+name: Bootstrap exact AzaharPlus source
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/bootstrap-upstream.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout bootstrap repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Import exact AzaharPlus revision
+        env:
+          UPSTREAM_SHA: 204fde66613d2af780eb9434081561124be3ebac
+        run: |
+          git remote add upstream https://github.com/AzaharPlus/AzaharPlus.git
+          git fetch upstream "$UPSTREAM_SHA"
+          git push origin "$UPSTREAM_SHA":refs/heads/main --force
