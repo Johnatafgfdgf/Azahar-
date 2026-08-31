@@ -23,8 +23,21 @@ jobs:
         env:
           UPSTREAM_SHA: 204fde66613d2af780eb9434081561124be3ebac
         run: |
-          git remote add upstream https://github.com/AzaharPlus/AzaharPlus.git
+          set -euxo pipefail
+          cp .github/workflows/bootstrap-upstream.yml /tmp/bootstrap-upstream.yml
+          git remote add upstream https://github.com/AzaharPlus/AzaharPlus.git || true
           git fetch upstream "$UPSTREAM_SHA"
-          git push origin "$UPSTREAM_SHA":refs/heads/main --force
 
-# bootstrap trigger
+          # Replace the repository index with the exact upstream tree so submodule gitlinks
+          # and file modes stay intact, but keep this bootstrap workflow unchanged. This
+          # avoids GITHUB_TOKEN's restriction on importing another repository's workflows.
+          git read-tree "$UPSTREAM_SHA^{tree}"
+          git rm -r --cached --ignore-unmatch .github/workflows || true
+          mkdir -p .github/workflows
+          cp /tmp/bootstrap-upstream.yml .github/workflows/bootstrap-upstream.yml
+          git add .github/workflows/bootstrap-upstream.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Import exact AzaharPlus 204fde666 source"
+          git push origin HEAD:main --force
