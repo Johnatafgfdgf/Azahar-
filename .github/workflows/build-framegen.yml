@@ -71,3 +71,5 @@ jobs:
           name: AzaharPlus-FrameGen-debug
           path: artifacts/
           if-no-files-found: error
+
+# build trigger: latest integrated backend + DLL picker
