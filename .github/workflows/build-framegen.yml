@@ -72,4 +72,4 @@ jobs:
           path: artifacts/
           if-no-files-found: error
 
-# build trigger: latest integrated backend + DLL picker
+# build trigger: Android resource fix applied
