@@ -1,0 +1,44 @@
+name: Apply Azahar FrameGen Backend
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [framegen]
+    paths:
+      - "tools/apply_framegen_backend.py"
+      - "src/video_core/renderer_vulkan/vk_framegen.cpp"
+      - "src/video_core/renderer_vulkan/vk_framegen.h"
+      - ".github/workflows/apply-framegen-backend.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: framegen
+          fetch-depth: 0
+      - name: Apply backend integration
+        run: python3 tools/apply_framegen_backend.py
+      - name: Commit generated integration changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            externals/CMakeLists.txt \
+            src/video_core/CMakeLists.txt \
+            src/video_core/renderer_vulkan/vk_instance.cpp \
+            src/video_core/renderer_vulkan/vk_present_window.cpp \
+            src/video_core/renderer_vulkan/vk_present_window.h \
+            src/video_core/renderer_vulkan/vk_framegen.h \
+            src/android/app/src/main/res/values/strings.xml \
+            tools/apply_framegen_ui.py
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+          else
+            git commit -m "Integrate LSFG into Vulkan presentation path"
+            git push origin HEAD:framegen
+          fi
