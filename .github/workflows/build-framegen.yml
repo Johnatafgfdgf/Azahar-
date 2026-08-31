@@ -1,0 +1,66 @@
+name: Build Azahar FrameGen
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [framegen]
+    paths:
+      - "src/**"
+      - "CMakeLists.txt"
+      - "externals/**"
+      - ".gitmodules"
+      - ".github/workflows/build-framegen.yml"
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_COMPILERCHECK: content
+      CCACHE_SLOPPINESS: time_macros
+    steps:
+      - name: Checkout Azahar FrameGen
+        uses: actions/checkout@v4
+        with:
+          ref: framegen
+          submodules: recursive
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ccache apksigner ninja-build
+
+      - name: Build debug APK
+        working-directory: src/android
+        env:
+          NDK_CCACHE: ccache
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
+
+      - name: Collect APK
+        run: |
+          APK="$(find src/android/app/build/outputs/apk -type f -name '*debug*.apk' | head -n 1)"
+          if [ -z "$APK" ]; then
+            echo "APK not found"
+            find src/android/app/build/outputs -maxdepth 5 -type f || true
+            exit 1
+          fi
+          apksigner verify --verbose "$APK"
+          mkdir -p artifacts
+          cp "$APK" artifacts/AzaharPlus-FrameGen-debug.apk
+          sha256sum artifacts/AzaharPlus-FrameGen-debug.apk > artifacts/SHA256.txt
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AzaharPlus-FrameGen-debug
+          path: artifacts/
+          if-no-files-found: error
