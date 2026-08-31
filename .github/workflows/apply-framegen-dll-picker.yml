@@ -1,0 +1,40 @@
+name: Apply Azahar FrameGen DLL Picker
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [framegen]
+    paths:
+      - "tools/apply_framegen_dll_picker.py"
+      - ".github/workflows/apply-framegen-dll-picker.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: framegen
+          fetch-depth: 0
+      - name: Apply Lossless.dll picker
+        run: python3 tools/apply_framegen_dll_picker.py
+      - name: Commit source changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            src/android/app/src/main/java/org/citra/citra_emu/NativeLibrary.kt \
+            src/android/app/src/main/java/org/citra/citra_emu/CitraApplication.kt \
+            src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsActivity.kt \
+            src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsFragmentPresenter.kt \
+            src/android/app/src/main/jni/native.cpp \
+            src/android/app/src/main/res/values/strings.xml
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+          else
+            git commit -m "Add Lossless.dll import and persistent LSFG path"
+            git push origin HEAD:framegen
+          fi
