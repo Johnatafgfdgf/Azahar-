@@ -520,9 +520,6 @@ void PresentWindow::PresentImage(Frame* frame, vk::Image source_image, bool gene
     }
     swapchain.Present();
 
-    // The current Azahar presenter owns one command buffer per real frame. Generated frames are
-    // therefore drained before re-recording that command buffer. This is deliberately conservative
-    // and can later be replaced by a small command-buffer/fence ring without changing LSFG itself.
     if (generated) {
         graphics_queue.waitIdle();
         cmdbuf.reset();
