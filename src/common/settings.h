@@ -503,6 +503,15 @@ struct Values {
     SwitchableSetting<bool> disable_spirv_optimizer{true, "disable_spirv_optimizer"};
     SwitchableSetting<bool> async_shader_compilation{false, "async_shader_compilation"};
     SwitchableSetting<bool> async_presentation{true, "async_presentation"};
+    // Integrated Vulkan frame generation. The backend consumes the final composed 3DS image
+    // immediately before swapchain presentation; it never uses Android screen capture.
+    SwitchableSetting<bool> frame_gen{false, "frame_gen"};
+    SwitchableSetting<u32, true> frame_gen_multiplier{2, 2, 4, "frame_gen_multiplier"};
+    SwitchableSetting<u32, true> frame_gen_target_rate{120, 0, 240, "frame_gen_target_rate"};
+    SwitchableSetting<u32, true> frame_gen_queue_target{0, 0, 2, "frame_gen_queue_target"};
+    SwitchableSetting<bool> frame_gen_flow_scale_auto{true, "frame_gen_flow_scale_auto"};
+    SwitchableSetting<u32, true> frame_gen_flow_scale{100, 25, 100, "frame_gen_flow_scale"};
+    SwitchableSetting<bool> frame_gen_fp16{true, "frame_gen_fp16"};
     SwitchableSetting<bool> use_hw_shader{true, "use_hw_shader"};
     SwitchableSetting<bool> use_disk_shader_cache{true, "use_disk_shader_cache"};
     SwitchableSetting<bool> shaders_accurate_mul{true, "shaders_accurate_mul"};
